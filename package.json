@@ -18,7 +18,7 @@
   "scripts": {
     "test": "npm run babel && mocha --compilers js:babel-core/register test/index_test.js",
     "babel": "babel src --out-dir lib",
-    "prepublish": "npm run babel"
+    "prepare": "npm run babel"
   },
   "main": "lib/index.js",
   "dependencies": {
