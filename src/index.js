@@ -61,10 +61,10 @@ function wikiLinkPlugin(opts = {}) {
                     alias: displayName,
                     permalink: permalink,
                     exists: exists,
-                    hName: 'a',
+                    hName: 'Link',
                     hProperties: {
                         className: classNames,
-                        href: hrefTemplate(permalink)
+                        to: hrefTemplate(permalink)
                     },
                     hChildren: [{
                         type: 'text',
@@ -115,6 +115,6 @@ let processor = unified()
     .use(html)
 
 
-console.log(processor.processSync('Hey here is a [[Wiki Link]]. Here is [[Another one]]. Here is an [[real page:aliased page]]. Here is a [normal link](https://google.com).'))
+//console.log(processor.processSync('Hey here is a [[Wiki Link]]. Here is [[Another one]]. Here is an [[real page:aliased page]]. Here is a [normal link](https://google.com).'))
 
 module.exports = wikiLinkPlugin
