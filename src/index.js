@@ -46,7 +46,7 @@ function wikiLinkPlugin(opts = {}) {
             let exists = permalink != undefined;
 
             if (!exists) {
-                permalink = pagePermalinks[0];
+                permalink = '/wiki/' + name;
             }
 
             let classNames = wikiLinkClassName;
