@@ -1,14 +1,14 @@
 {
-  "name": "remark-wiki-link",
+  "name": "remark-wiki-link-a",
   "description": "Parse and render wiki-style links",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "keywords": [
     "remark",
     "remark-plugin",
     "markdown",
     "gfm"
   ],
-  "repository": "https://github.com/twardoch/remark-wiki-link",
+  "repository": "https://github.com/twardoch/remark-wiki-link-a",
   "license": "MIT",
   "author": {
     "name": "Mark Hudnall",

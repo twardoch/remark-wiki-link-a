@@ -8,25 +8,18 @@ function locator (value, fromIndex) {
 
 function wikiLinkPlugin(opts = {}) {
     let permalinks = opts.permalinks || [];
-    let newClassName = opts.newClassName || 'wiki-new';
-    let wikiLinkClassName = opts.wikiLinkClassName || 'wiki';
-    let suffix = opts.suffix || '.md';
+    let rewrite = opts.stringify || false;
+    let mdPrefix = opts.mdPrefix || '';
+    let mdSuffix = opts.mdSuffix || '.md';
+    let mdSpace = opts.mdSpace || '-';
+    let htmlClass = opts.htmlClass || 'wikilink';
+    let htmlPrefix = opts.htmlPrefix || mdPrefix;
+    let htmlSuffix = opts.htmlSuffix || '.html';
+    let htmlSpace = opts.htmlSpace || mdSpace;
     let defaultHrefTemplate = (permalink) => `${permalink}`
     let hrefTemplate = opts.hrefTemplate || defaultHrefTemplate
 
-    function isAlias(pageTitle) {
-        return pageTitle.includes(':')
-    }
-
-    function parseAliasLink(pageTitle) {
-        var [name, displayName] = pageTitle.split(':')
-        return { name, displayName }
-    }
-
     function parsePageTitle(pageTitle) {
-        if (isAlias(pageTitle)) {
-            return parseAliasLink(pageTitle)
-        }
         return {
             name: pageTitle,
             displayName: pageTitle
@@ -38,22 +31,22 @@ function wikiLinkPlugin(opts = {}) {
 
         if (match) {
             const pageName = match[1].trim();
-            const { name, displayName } = parsePageTitle(pageName)
+            const { name, displayName } = parsePageTitle(pageName);
 
-            let permalink = name.replace(/ /g, '-') + suffix;
+            let htmlLink =  htmlPrefix + name.replace(/ /g, htmlSpace) + htmlSuffix;
 
-            let classNames = wikiLinkClassName;
+            let classNames = htmlClass;
 
             return eat(match[0])({
                 type: 'wikiLink',
                 value: name,
                 data: {
                     alias: displayName,
-                    permalink: permalink,
+                    permalink: htmlLink,
                     hName: 'a',
                     hProperties: {
                         className: classNames,
-                        href: hrefTemplate(permalink)
+                        href: hrefTemplate(htmlLink)
                     },
                     hChildren: [{
                         type: 'text',
@@ -80,8 +73,8 @@ function wikiLinkPlugin(opts = {}) {
         const visitors = Compiler.prototype.visitors
         if (visitors) {
             visitors.wikiLink = function (node) {
-                if (node.data.alias != node.value) {
-                    return `[[${node.value}:${node.data.alias}]]`
+                if (rewrite) {
+                    return `[${node.value}](${mdPrefix}${node.value.replace(/ /g, mdSpace)}${mdSuffix})`
                 }
                 return `[[${node.value}]]`
             }
