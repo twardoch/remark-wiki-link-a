@@ -8,11 +8,10 @@ function locator (value, fromIndex) {
 
 function wikiLinkPlugin(opts = {}) {
     let permalinks = opts.permalinks || [];
-    let defaultPageResolver = (name) => [name.replace(/ /g, '_').toLowerCase()];
-    let pageResolver = opts.pageResolver || defaultPageResolver
-    let newClassName = opts.newClassName || 'new';
-    let wikiLinkClassName = opts.wikiLinkClassName || 'internal';
-    let defaultHrefTemplate = (permalink) => `#/page/${permalink}`
+    let newClassName = opts.newClassName || 'wiki-new';
+    let wikiLinkClassName = opts.wikiLinkClassName || 'wiki';
+    let suffix = opts.suffix || '.md';
+    let defaultHrefTemplate = (permalink) => `${permalink}`
     let hrefTemplate = opts.hrefTemplate || defaultHrefTemplate
 
     function isAlias(pageTitle) {
@@ -41,18 +40,9 @@ function wikiLinkPlugin(opts = {}) {
             const pageName = match[1].trim();
             const { name, displayName } = parsePageTitle(pageName)
 
-            let pagePermalinks = pageResolver(name);
-            let permalink = pagePermalinks.find(p => permalinks.includes(p));
-            let exists = permalink != undefined;
-
-            if (!exists) {
-                permalink = '/wiki/' + name;
-            }
+            let permalink = name.replace(/ /g, '-') + suffix;
 
             let classNames = wikiLinkClassName;
-            if (!exists) {
-                classNames += ' ' + newClassName;
-            }
 
             return eat(match[0])({
                 type: 'wikiLink',
@@ -60,11 +50,10 @@ function wikiLinkPlugin(opts = {}) {
                 data: {
                     alias: displayName,
                     permalink: permalink,
-                    exists: exists,
-                    hName: 'Link',
+                    hName: 'a',
                     hProperties: {
                         className: classNames,
-                        to: hrefTemplate(permalink)
+                        href: hrefTemplate(permalink)
                     },
                     hChildren: [{
                         type: 'text',
