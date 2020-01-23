@@ -48,5 +48,5 @@
         "test": "npm run build && mocha --compilers js:babel-core/register test/index_test.js",
         "watch": "babel -w src --out-dir ."
     },
-    "version": "0.0.4"
+    "version": "0.0.5"
 }
