@@ -5,6 +5,14 @@ This [remark](https://github.com/wooorm/remark) plugin parses and renders `[[Wik
 * Parse wiki-style links and render them as anchors
 * Parse aliased wiki links i.e `[[Real Page:Page Alias]]`
 
+## Installation
+
+[npm][npm]:
+
+```bash
+npm install remark-wiki-link-a
+```
+
 ## Usage
 
 ```javascript
