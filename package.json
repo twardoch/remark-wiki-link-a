@@ -15,6 +15,8 @@
         "@babel/cli": "^7.8.3",
         "@babel/core": "^7.8.3",
         "@babel/preset-env": "^7.8.3",
+        "@babel/register": "^7.18.9",
+        "cross-env": "^7.0.3",
         "mocha": "^6.2.2",
         "rehype-stringify": "^3.0.0",
         "remark-parse": "^3.0.1",
@@ -45,7 +47,7 @@
         "build": "babel src --out-dir lib",
         "prepare": "npm run build",
         "prepublish": "cross-env NODE_ENV=production npm run build",
-        "test": "npm run build && mocha --compilers js:babel-core/register test/index_test.js",
+        "test": "npm run build && mocha --require @babel/register test/index_test.js",
         "watch": "babel -w src --out-dir ."
     },
     "version": "0.0.5"

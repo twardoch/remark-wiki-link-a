@@ -1,4 +1,4 @@
-const map = require('unist-util-map');
+import map from 'unist-util-map';
 
 const LINK_REGEX = /^\[\[(.+?)\]\]/;
 
