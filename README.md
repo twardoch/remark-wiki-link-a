@@ -1,9 +1,11 @@
-# remark-wiki-link-a
+# remark-wiki-link-a (Streamlined MVP)
 
-This [remark](https://github.com/wooorm/remark) plugin parses and renders `[[Wiki Links]]`. It is derived from the plugin by [landakram](https://github.com/landakram/remark-wiki-link).
+This [remark](https://github.com/wooorm/remark) plugin parses and renders `[[Wiki Links]]`. It is a streamlined version focusing on core functionality.
 
-* Parse wiki-style links and render them as anchors
-* Parse aliased wiki links i.e `[[Real Page:Page Alias]]`
+*   Parses `[[Wiki Links]]` and `[[Page Name:Display Alias]]` formats.
+*   Renders them as HTML `<a>` tags.
+*   Allows customization of HTML output (classes, href structure).
+*   Checks for page existence against a provided list of permalinks.
 
 ## Installation
 
@@ -16,65 +18,88 @@ npm install remark-wiki-link-a
 ## Usage
 
 ```javascript
-const unified = require('unified')
-const markdown = require('remark-parse')
+const unified = require('unified');
+const markdown = require('remark-parse');
 const wikiLinkPlugin = require('remark-wiki-link-a');
+const html = require('rehype-stringify'); // For converting to HTML
+const remark2rehype = require('remark-rehype');
 
-let processor = unified()
-    .use(markdown, { gfm: true })
-    .use(wikiLinkPlugin)
+// Example: Process markdown to HTML
+const processor = unified()
+    .use(markdown)
+    .use(wikiLinkPlugin, {
+        permalinks: ['existing-page'] // Normalized keys: 'existing-page' from "Existing Page"
+    })
+    .use(remark2rehype)
+    .use(html);
+
+const markdownInput = "Here is a link to [[An Existing Page]] and one to [[A New Page:With Alias]].";
+processor.process(markdownInput).then(result => {
+    console.log(String(result));
+    // Expected HTML (simplified):
+    // <p>Here is a link to <a class="wikilink" href="An-Existing-Page.html">An Existing Page</a> and one to <a class="wikilink new" href="A-New-Page.html">With Alias</a>.</p>
+});
 ```
 
-When the processor is run, wiki links will be parsed to a `wikiLink` node. 
+## AST Node Structure
 
-If we have this markdown string: 
-
-```
-[[Test Page]]
-```
-
-A node will be created that looks like this:
+When a wiki link like `[[My Page:My Alias]]` is parsed, a `wikiLink` node is created:
 
 ```javascript
 {
-    value: 'Test Page',
-    data: {
-        alias: 'Test Page',
-        permalink: 'Test-Page.html',
-        exists: false,
-        hName: 'a',
-        hProperties: {
-            className: 'wikilink',
-            href: 'Test-Page.html'
-        },
-        hChildren: [{
-            type: 'text',
-            value: 'Test Page'
-        }]
-    }
+  type: 'wikiLink',
+  value: 'My Page', // Canonical page name
+  data: {
+    alias: 'My Alias', // Display text for the link
+    exists: false,     // Boolean, true if 'my-page' (normalized) is in options.permalinks
+    permalink: 'My-Page.html', // Generated href string, e.g., using default htmlPrefix, htmlSuffix, htmlSpace
+    hName: 'a',
+    hProperties: {
+      className: 'wikilink new', // e.g., 'wikilink' or 'wikilink new'
+      href: 'My-Page.html'       // The actual href for the <a> tag
+    },
+    hChildren: [{
+      type: 'text',
+      value: 'My Alias' // Display text
+    }]
+  }
 }
 ```
 
-* `data.alias`: The display name for this link
-* `data.permalink`: The permalink for this page. This permalink is computed from `node.value` using `options.pageResolver`, which can be passed in when initializing the plugin. 
-* `data.exists`: Whether the page exists. A page exists if its permalink is found in `options.permalinks`, passed when initializing the plugin.
-* `data.hProperties.className`: Classes that are automatically attached to the `a` when it is rendered as HTML. These are configurable with `options.wikiLinkClassName` and `options.newClassName`. `options.newClassName` is attached when `data.exists` is false.
-* `data.hProperties.href`: `href` value for the rendered `a`. This `href` is computed using `options.hrefTemplate`.
+**Key Node Properties:**
 
-When rendered to HTML, we get:
+*   `node.value`: The canonical name of the page (e.g., "My Page" from `[[My Page:Anything]]`). Used for generating the HREF and for the permalink existence check key.
+*   `node.data.alias`: The text to be displayed for the link (e.g., "My Alias"). If no alias is specified, this defaults to `node.value`.
+*   `node.data.exists`: A boolean indicating if the page is considered to exist. This is determined by checking a normalized version of `node.value` (lowercase, spaces replaced by hyphens, e.g., "my-page") against the `options.permalinks` array.
+*   `node.data.permalink`: The generated permalink (HREF string) for the link. This is identical to `node.data.hProperties.href`.
+*   `node.data.hProperties.className`: The CSS class(es) for the generated `<a>` tag. By default, this is `wikilink`. If `node.data.exists` is `false`, ` new` (or `options.newClassName`) is appended.
+*   `node.data.hProperties.href`: The actual HREF for the `<a>` tag.
+*   `node.data.hChildren[0].value`: The display text, same as `node.data.alias`.
 
-```
-<a class="wikilink" href="Test-Page.html">Test Page</a>
-```
+## Configuration Options
 
-### Configuration options
+Options can be passed to `wikiLinkPlugin` as the second argument to `.use()`:
 
-- `options.stringify`: if `true`, replaces the wiki links by traditional links in Markdown; default: `false`
-- `options.mdPrefix`: if `stringify` is true, the prefix added to the Markdown link; default: `""`
-- `options.mdSuffix`: if `stringify` is true, the suffix added to the Markdown link; default: `".md"`
-- `options.mdSpace`: if `stringify` is true, replace space with this; default: `"-"`
-- `options.htmlClass`: add this class to the HTML `a` element; default: `wikilink`
-- `options.htmlPrefix`: the prefix added to the HTML `a href` link; default: `""`
-- `options.htmlSuffix`: the prefix added to the HTML `a href` link; default: `".html"`
-- `options.htmlSpace`: replace space with this; default: `"-"`
+*   `permalinks` (Array of strings, default: `[]`):
+    An array of known page permalink keys. The plugin normalizes the `value` of a wiki link (converts to lowercase, replaces spaces with hyphens) and checks if this key exists in the `permalinks` array to set `node.data.exists`.
+    Example: `permalinks: ['home-page', 'about-us']` would match `[[Home Page]]` and `[[About Us]]`.
+
+*   `htmlClass` (string, default: `'wikilink'`):
+    The base CSS class name to apply to the generated `<a>` HTML element.
+
+*   `newClassName` (string, default: `'new'`):
+    The CSS class name to append to `htmlClass` if the page link does not exist in `permalinks`.
+
+*   `htmlPrefix` (string, default: `''`):
+    A prefix to prepend to the generated `href` value. Example: `'/wiki/'`.
+
+*   `htmlSuffix` (string, default: `'.html'`):
+    A suffix to append to the generated `href` value. Example: `''` or `'.php'`.
+
+*   `htmlSpace` (string, default: `'-'`):
+    The character used to replace spaces in the page name when generating the `href` value. Example: `'_'`.
+
+## Stringification (Note)
+
+This MVP version of the plugin focuses on parsing wiki links and rendering them to HTML. The functionality to stringify `wikiLink` AST nodes back into `[[PageName]]` or `[[PageName:DisplayAlias]]` markdown text has been removed due to complexities with older versions of underlying libraries. If you process an AST containing these `wikiLink` nodes with a standard `remark-stringify`, they will not be converted back to the wiki link syntax unless you provide a custom stringifier for the `wikiLink` node type.
 

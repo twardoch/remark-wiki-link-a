@@ -1,56 +1,79 @@
-const map = require('unist-util-map');
-
 const LINK_REGEX = /^\[\[(.+?)\]\]/;
 
 function locator (value, fromIndex) {
   return value.indexOf('[', fromIndex)
 }
 
-function wikiLinkPlugin(opts = {}) {
-    let permalinks = opts.permalinks || [];
-    let rewrite = opts.stringify || false;
-    let mdPrefix = opts.mdPrefix || '';
-    let mdSuffix = opts.mdSuffix || '.md';
-    let mdSpace = opts.mdSpace || '-';
-    let htmlClass = opts.htmlClass || 'wikilink';
-    let htmlPrefix = opts.htmlPrefix || mdPrefix;
-    let htmlSuffix = opts.htmlSuffix || '.html';
-    let htmlSpace = opts.htmlSpace || mdSpace;
-    let defaultHrefTemplate = (permalink) => `${permalink}`
-    let hrefTemplate = opts.hrefTemplate || defaultHrefTemplate
+function wikiLinkPlugin(options = {}) {
+    const settings = {
+        permalinks: [],
+        htmlClass: 'wikilink',
+        htmlPrefix: '',
+        htmlSuffix: '.html',
+        htmlSpace: '-',
+        newClassName: 'new',
+        ...options
+    };
 
-    function parsePageTitle(pageTitle) {
-        return {
-            name: pageTitle,
-            displayName: pageTitle
-        }
-    }
+    // This internal function is no longer needed as parsing logic will be in inlineTokenizer
+    // function parsePageTitle(pageTitle) {
+    //     return {
+    //         name: pageTitle,
+    //         displayName: pageTitle
+    //     }
+    // }
 
     function inlineTokenizer(eat, value) {
-        let match = LINK_REGEX.exec(value);
+        const match = LINK_REGEX.exec(value);
 
         if (match) {
-            const pageName = match[1].trim();
-            const { name, displayName } = parsePageTitle(pageName);
+            const fullMatch = match[0]; // e.g., "[[Value:Alias]]"
+            const content = match[1].trim(); // e.g., "Value:Alias"
 
-            let htmlLink =  htmlPrefix + name.replace(/ /g, htmlSpace) + htmlSuffix;
+            let pageNameFromLink;
+            let displayNameFromLink;
 
-            let classNames = htmlClass;
+            const aliasSeparatorIndex = content.indexOf(':'); // Changed lastIndexOf to indexOf
+            if (aliasSeparatorIndex !== -1) {
+                pageNameFromLink = content.substring(0, aliasSeparatorIndex).trim();
+                displayNameFromLink = content.substring(aliasSeparatorIndex + 1).trim();
+                // If pageName is empty after split (e.g., "[[:Alias]]"), treat full content as name.
+                if (!pageNameFromLink) {
+                    pageNameFromLink = displayNameFromLink;
+                }
+            } else {
+                pageNameFromLink = content;
+                displayNameFromLink = content;
+            }
+             if (!displayNameFromLink) displayNameFromLink = pageNameFromLink;
 
-            return eat(match[0])({
+
+            // Normalize pageName for checking in permalinks array
+            const permalinkKey = pageNameFromLink.toLowerCase().replace(/ /g, '-');
+            const pageExists = settings.permalinks.includes(permalinkKey);
+
+            let classNames = settings.htmlClass;
+            if (!pageExists) {
+                classNames += ` ${settings.newClassName}`;
+            }
+
+            const href = settings.htmlPrefix + pageNameFromLink.replace(/ /g, settings.htmlSpace) + settings.htmlSuffix;
+
+            return eat(fullMatch)({
                 type: 'wikiLink',
-                value: name,
+                value: pageNameFromLink, // Canonical name
                 data: {
-                    alias: displayName,
-                    permalink: htmlLink,
+                    alias: displayNameFromLink, // Text to display
+                    exists: pageExists,
+                    permalink: href, // Generated href
                     hName: 'a',
                     hProperties: {
-                        className: classNames,
-                        href: hrefTemplate(htmlLink)
+                        className: classNames.trim(),
+                        href: href
                     },
                     hChildren: [{
                         type: 'text',
-                        value: displayName
+                        value: displayNameFromLink
                     }]
                 },
             });
@@ -66,20 +89,8 @@ function wikiLinkPlugin(opts = {}) {
     inlineTokenizers.wikiLink = inlineTokenizer
     inlineMethods.splice(inlineMethods.indexOf('link'), 0, 'wikiLink')
 
-    // Stringify for wiki link
-    const Compiler = this.Compiler
-
-    if (Compiler != null) {
-        const visitors = Compiler.prototype.visitors
-        if (visitors) {
-            visitors.wikiLink = function (node) {
-                if (rewrite) {
-                    return `[${node.value}](${mdPrefix}${node.value.replace(/ /g, mdSpace)}${mdSuffix})`
-                }
-                return `[[${node.value}]]`
-            }
-        }
-    }
+    // Stringification logic removed for MVP due to complexities with old library versions.
+    // The plugin will focus on parsing and HTML transformation.
 }
 
 const unified = require('unified')
