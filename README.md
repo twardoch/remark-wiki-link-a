@@ -69,7 +69,7 @@ When a wiki link like `[[My Page:My Alias]]` is parsed, a `wikiLink` node is cre
 **Key Node Properties:**
 
 *   `node.value`: The canonical name of the page (e.g., "My Page" from `[[My Page:Anything]]`). Used for generating the HREF and for the permalink existence check key.
-*   `node.data.alias`: The text to be displayed for the link (e.g., "My Alias"). If no alias is specified, this defaults to `node.value`.
+*   `node.data.alias`: The text to be displayed for the link (e.g., "My Alias"). If no alias is specified (e.g., `[[My Page]]`), this defaults to `node.value`. If the link syntax `[[:My Alias]]` is used (colon at the beginning), "My Alias" will be used for both `node.value` (the page name) and `node.data.alias` (the display text).
 *   `node.data.exists`: A boolean indicating if the page is considered to exist. This is determined by checking a normalized version of `node.value` (lowercase, spaces replaced by hyphens, e.g., "my-page") against the `options.permalinks` array.
 *   `node.data.permalink`: The generated permalink (HREF string) for the link. This is identical to `node.data.hProperties.href`.
 *   `node.data.hProperties.className`: The CSS class(es) for the generated `<a>` tag. By default, this is `wikilink`. If `node.data.exists` is `false`, ` new` (or `options.newClassName`) is appended.
