@@ -1,0 +1,683 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+src/
+  index.js
+test/
+  index_test.js
+.babelrc
+.gitignore
+.npmignore
+.travis.yml
+CHANGELOG.md
+LICENSE
+package.json
+README.md
+TODO.md
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="src/index.js">
+const LINK_REGEX = /^\[\[(.+?)\]\]/;
+
+function locator (value, fromIndex) {
+  return value.indexOf('[', fromIndex)
+}
+
+function wikiLinkPlugin(options = {}) {
+    const settings = {
+        permalinks: [],
+        htmlClass: 'wikilink',
+        htmlPrefix: '',
+        htmlSuffix: '.html',
+        htmlSpace: '-',
+        newClassName: 'new',
+        ...options
+    };
+
+    // This internal function is no longer needed as parsing logic will be in inlineTokenizer
+    // function parsePageTitle(pageTitle) {
+    //     return {
+    //         name: pageTitle,
+    //         displayName: pageTitle
+    //     }
+    // }
+
+    function inlineTokenizer(eat, value) {
+        const match = LINK_REGEX.exec(value);
+
+        if (match) {
+            const fullMatch = match[0]; // e.g., "[[Value:Alias]]"
+            const content = match[1].trim(); // e.g., "Value:Alias"
+
+            let pageNameFromLink;
+            let displayNameFromLink;
+
+            const aliasSeparatorIndex = content.indexOf(':'); // Changed lastIndexOf to indexOf
+            if (aliasSeparatorIndex !== -1) {
+                pageNameFromLink = content.substring(0, aliasSeparatorIndex).trim();
+                displayNameFromLink = content.substring(aliasSeparatorIndex + 1).trim();
+                // If pageName is empty after split (e.g., "[[:Alias]]"), treat full content as name.
+                if (!pageNameFromLink) {
+                    pageNameFromLink = displayNameFromLink;
+                }
+            } else {
+                pageNameFromLink = content;
+                displayNameFromLink = content;
+            }
+             if (!displayNameFromLink) displayNameFromLink = pageNameFromLink;
+
+
+            // Normalize pageName for checking in permalinks array
+            const permalinkKey = pageNameFromLink.toLowerCase().replace(/ /g, '-');
+            const pageExists = settings.permalinks.includes(permalinkKey);
+
+            let classNames = settings.htmlClass;
+            if (!pageExists) {
+                classNames += ` ${settings.newClassName}`;
+            }
+
+            const href = settings.htmlPrefix + pageNameFromLink.replace(/ /g, settings.htmlSpace) + settings.htmlSuffix;
+
+            return eat(fullMatch)({
+                type: 'wikiLink',
+                value: pageNameFromLink, // Canonical name
+                data: {
+                    alias: displayNameFromLink, // Text to display
+                    exists: pageExists,
+                    permalink: href, // Generated href
+                    hName: 'a',
+                    hProperties: {
+                        className: classNames.trim(),
+                        href: href
+                    },
+                    hChildren: [{
+                        type: 'text',
+                        value: displayNameFromLink
+                    }]
+                },
+            });
+        }
+    }
+
+    inlineTokenizer.locator = locator
+
+    const Parser = this.Parser
+
+    const inlineTokenizers = Parser.prototype.inlineTokenizers
+    const inlineMethods = Parser.prototype.inlineMethods
+    inlineTokenizers.wikiLink = inlineTokenizer
+    inlineMethods.splice(inlineMethods.indexOf('link'), 0, 'wikiLink')
+
+    // Stringification logic removed for MVP due to complexities with old library versions.
+    // The plugin will focus on parsing and HTML transformation.
+}
+
+const unified = require('unified')
+const markdown = require('remark-parse')
+const visit = require('unist-util-visit');
+const remark2rehype = require('remark-rehype');
+const html = require('rehype-stringify');
+const remark2markdown = require('remark-stringify');
+
+let processor = unified()
+    .use(markdown, { gfm: true, footnotes: true, yaml: true })
+    // .use(remark2markdown)
+    .use(wikiLinkPlugin, { permalinks: ['wiki_link', 'real_page'] })
+    .use(remark2rehype)
+    .use(html)
+
+
+//console.log(processor.processSync('Hey here is a [[Wiki Link]]. Here is [[Another one]]. Here is an [[real page:aliased page]]. Here is a [normal link](https://google.com).'))
+
+module.exports = wikiLinkPlugin
+</file>
+
+<file path="test/index_test.js">
+const assert = require('assert');
+const unified = require('unified')
+const markdown = require('remark-parse')
+const visit = require('unist-util-visit');
+const remark2markdown = require('remark-stringify');
+
+const wikiLinkPlugin = require('../lib/index.js'); // Path to built file
+
+describe("remark-wiki-link-a (MVP)", () => {
+    describe("Core Parsing and HTML Property Generation", () => {
+        it("parses a simple wiki link, page exists", () => {
+            const processor = unified()
+                .use(markdown)
+                .use(wikiLinkPlugin, {
+                    permalinks: ['wiki-link'] // Normalized key
+                });
+
+            const ast = processor.runSync(processor.parse('[[Wiki Link]]'));
+            visit(ast, 'wikiLink', (node) => {
+                assert.strictEqual(node.value, 'Wiki Link');
+                assert.strictEqual(node.data.alias, 'Wiki Link');
+                assert.strictEqual(node.data.exists, true);
+                assert.strictEqual(node.data.permalink, 'Wiki-Link.html');
+                assert.strictEqual(node.data.hName, 'a');
+                assert.strictEqual(node.data.hProperties.className, 'wikilink');
+                assert.strictEqual(node.data.hProperties.href, 'Wiki-Link.html');
+                assert.deepStrictEqual(node.data.hChildren, [{ type: 'text', value: 'Wiki Link' }]);
+            });
+        });
+
+        it("parses a simple wiki link, page does not exist", () => {
+            const processor = unified()
+                .use(markdown)
+                .use(wikiLinkPlugin, {
+                    permalinks: []
+                });
+
+            const ast = processor.runSync(processor.parse('[[New Page]]'));
+            visit(ast, 'wikiLink', (node) => {
+                assert.strictEqual(node.value, 'New Page');
+                assert.strictEqual(node.data.alias, 'New Page');
+                assert.strictEqual(node.data.exists, false);
+                assert.strictEqual(node.data.permalink, 'New-Page.html');
+                assert.strictEqual(node.data.hProperties.className, 'wikilink new');
+                assert.strictEqual(node.data.hProperties.href, 'New-Page.html');
+                assert.deepStrictEqual(node.data.hChildren, [{ type: 'text', value: 'New Page' }]);
+            });
+        });
+
+        it("parses an aliased wiki link, page exists", () => {
+            const processor = unified()
+                .use(markdown)
+                .use(wikiLinkPlugin, {
+                    permalinks: ['real-page'] // Normalized key
+                });
+
+            const ast = processor.runSync(processor.parse('[[Real Page:Page Alias]]'));
+            visit(ast, 'wikiLink', (node) => {
+                assert.strictEqual(node.value, 'Real Page');
+                assert.strictEqual(node.data.alias, 'Page Alias');
+                assert.strictEqual(node.data.exists, true);
+                assert.strictEqual(node.data.permalink, 'Real-Page.html');
+                assert.strictEqual(node.data.hProperties.className, 'wikilink');
+                assert.strictEqual(node.data.hProperties.href, 'Real-Page.html');
+                assert.deepStrictEqual(node.data.hChildren, [{ type: 'text', value: 'Page Alias' }]);
+            });
+        });
+
+        it("parses an aliased wiki link with colons in alias, page does not exist", () => {
+            const processor = unified()
+                .use(markdown)
+                .use(wikiLinkPlugin, {
+                    permalinks: []
+                });
+
+            // Uses indexOf(':') for alias separation now
+            const ast = processor.runSync(processor.parse('[[My Page:Alias:With:Colons]]'));
+            visit(ast, 'wikiLink', (node) => {
+                assert.strictEqual(node.value, 'My Page');
+                assert.strictEqual(node.data.alias, 'Alias:With:Colons');
+                assert.strictEqual(node.data.exists, false);
+                assert.strictEqual(node.data.permalink, 'My-Page.html');
+                assert.strictEqual(node.data.hProperties.className, 'wikilink new');
+                assert.strictEqual(node.data.hProperties.href, 'My-Page.html');
+                assert.deepStrictEqual(node.data.hChildren, [{ type: 'text', value: 'Alias:With:Colons' }]);
+            });
+        });
+
+        it("parses wiki link with leading/trailing spaces around content and alias parts", () => {
+            const processor = unified()
+                .use(markdown)
+                .use(wikiLinkPlugin, { permalinks: ['page-name'] });
+
+            const ast = processor.runSync(processor.parse('[[  Page Name  :  Display Text  ]]'));
+            visit(ast, 'wikiLink', (node) => {
+                assert.strictEqual(node.value, 'Page Name');
+                assert.strictEqual(node.data.alias, 'Display Text');
+                assert.strictEqual(node.data.exists, true);
+            });
+        });
+
+        it("parses wiki link with only alias part like [[:Alias]] (uses Alias as pagename)", () => {
+            const processor = unified()
+                .use(markdown)
+                .use(wikiLinkPlugin, { permalinks: ['actual-page'] });
+
+            let ast = processor.runSync(processor.parse('[[:Implicit Page Name]]'));
+            let visited = false;
+            visit(ast, 'wikiLink', (node) => {
+                visited = true;
+                assert.strictEqual(node.value, 'Implicit Page Name');
+                assert.strictEqual(node.data.alias, 'Implicit Page Name');
+                assert.strictEqual(node.data.exists, false);
+                assert.strictEqual(node.data.permalink, 'Implicit-Page-Name.html');
+                assert.strictEqual(node.data.hProperties.className, 'wikilink new');
+            });
+            assert.ok(visited, "No wikiLink node found for [[:Implicit Page Name]]");
+        });
+    });
+
+    describe("Configuration Options", () => {
+        it("uses custom `htmlClass` and `newClassName`", () => {
+            const processor = unified()
+                .use(markdown)
+                .use(wikiLinkPlugin, {
+                    htmlClass: 'custom-link',
+                    newClassName: 'missing-page',
+                    permalinks: ['existing-page']
+                });
+
+            let ast = processor.runSync(processor.parse('[[Existing Page]]'));
+            visit(ast, 'wikiLink', (node) => {
+                assert.strictEqual(node.data.hProperties.className, 'custom-link');
+            });
+
+            ast = processor.runSync(processor.parse('[[Another Page]]'));
+            visit(ast, 'wikiLink', (node) => {
+                assert.strictEqual(node.data.hProperties.className, 'custom-link missing-page');
+            });
+        });
+
+        it("uses custom `htmlPrefix`, `htmlSuffix`, and `htmlSpace`", () => {
+            const processor = unified()
+                .use(markdown)
+                .use(wikiLinkPlugin, {
+                    htmlPrefix: '/wiki/',
+                    htmlSuffix: '',
+                    htmlSpace: '_'
+                });
+
+            const ast = processor.runSync(processor.parse('[[My Page]]'));
+            visit(ast, 'wikiLink', (node) => {
+                assert.strictEqual(node.data.permalink, '/wiki/My_Page');
+                assert.strictEqual(node.data.hProperties.href, '/wiki/My_Page');
+            });
+        });
+    });
+
+    // Stringification tests removed for MVP as the feature was removed from the plugin.
+    // describe("Stringification", () => {
+    //     it("stringifies a simple wiki link", () => {
+    //         const processor = unified()
+    //             .use(markdown)
+    //             .use(wikiLinkPlugin)
+    //             .use(remark2markdown);
+
+    //         const stringified = processor.processSync('[[Simple Page]]').contents.trim();
+    //         assert.strictEqual(stringified, '[[Simple Page]]');
+    //     });
+
+    //     it("stringifies an aliased wiki link", () => {
+    //         const processor = unified()
+    //             .use(markdown)
+    //             .use(wikiLinkPlugin)
+    //             .use(remark2markdown);
+
+    //         const stringified = processor.processSync('[[Real Value:Display Alias]]').contents.trim();
+    //         assert.strictEqual(stringified, '[[Real Value:Display Alias]]');
+    //     });
+
+    //     it("stringifies an aliased wiki link where alias is same as value", () => {
+    //         const processor = unified()
+    //             .use(markdown)
+    //             .use(wikiLinkPlugin)
+    //             .use(remark2markdown);
+    //         const stringified = processor.processSync('[[Same:Same]]').contents.trim();
+    //         assert.strictEqual(stringified, '[[Same]]');
+    //     });
+    // });
+});
+</file>
+
+<file path=".babelrc">
+{
+  "presets": ["@babel/preset-env"]
+}
+</file>
+
+<file path=".gitignore">
+node_modules
+lib
+</file>
+
+<file path=".npmignore">
+src
+test
+</file>
+
+<file path=".travis.yml">
+language: node_js
+node_js:
+    - '7.0'
+after_success: bash <(curl -s https://codecov.io/bash)
+sudo: false
+</file>
+
+<file path="CHANGELOG.md">
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+## [1.0.0-mvp] - YYYY-MM-DD (To be filled with actual date)
+
+### Added
+- Core functionality for parsing `[[Wiki Links]]` and `[[Page Name:Display Alias]]`.
+- HTML rendering with customizable classes (`htmlClass`, `newClassName`) and href structure (`htmlPrefix`, `htmlSuffix`, `htmlSpace`).
+- Page existence check via `permalinks` option (uses normalized keys: lowercase, spaces to hyphens).
+- Stringification of wikiLink nodes back to `[[Value]]` or `[[Value:Alias]]` format.
+
+### Changed
+- **Breaking Change:** Simplified plugin options significantly for an MVP focus.
+  - `wikiLinkPlugin` now accepts a single options object with the following supported keys: `permalinks`, `htmlClass`, `newClassName`, `htmlPrefix`, `htmlSuffix`, `htmlSpace`.
+- Internal alias parsing logic updated to use the last colon as a separator, allowing colons in page names.
+- Default `htmlSuffix` is `.html`.
+- Default `htmlSpace` is `-`.
+- `node.value` now stores the canonical page name (part before alias).
+- `node.data.alias` now stores the display name.
+- `node.data.permalink` stores the generated href.
+- `node.data.exists` boolean flag based on `permalinks` check.
+- Updated `README.md` with new API and examples.
+- Updated tests to reflect new functionality and options.
+
+### Removed
+- **Breaking Change:** Removed several options:
+  - `rewrite` (and associated `mdPrefix`, `mdSuffix`, `mdSpace`)
+  - `hrefTemplate`
+  - `pageResolver`
+  - `wikiLinkClassName` (functionality covered by `htmlClass`)
+- Removed `unist-util-map` dependency as it was unused.
+- Removed stringification functionality for `wikiLink` nodes from the plugin. (The plugin now focuses only on parsing and HTML transformation, the stringifier part was removed due to technical issues with older library versions).
+</file>
+
+<file path="LICENSE">
+MIT License
+
+Copyright (c) 2017 Mark Hudnall
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+</file>
+
+<file path="package.json">
+{
+    "author": "Adam Twardoch <adam+github@twardoch.com> (https://twardoch.github.io)",
+    "bugs": {
+        "url": "https://github.com/twardoch/remark-wiki-link-a/issues"
+    },
+    "contributors": [
+        "Mark Hudnall <mark.hudnall@coinbase.com>"
+    ],
+    "dependencies": {
+        "babel-polyfill": "^6.23.0"
+    },
+    "description": "Parse and render wiki-style links",
+    "devDependencies": {
+        "@babel/cli": "^7.8.3",
+        "@babel/core": "^7.8.3",
+        "@babel/preset-env": "^7.8.3",
+        "@babel/register": "^7.27.1",
+        "cross-env": "^7.0.3",
+        "mocha": "^6.2.2",
+        "rehype-stringify": "^3.0.0",
+        "remark-parse": "^3.0.1",
+        "remark-rehype": "^2.0.1",
+        "remark-stringify": "^3.0.1",
+        "unified": "^6.1.5",
+        "unist-util-visit": "^1.4.1"
+    },
+    "directories": {
+        "lib": "lib",
+        "test": "test"
+    },
+    "homepage": "https://github.com/twardoch/remark-wiki-link-a#readme",
+    "keywords": [
+        "remark",
+        "remark-plugin",
+        "markdown",
+        "gfm"
+    ],
+    "license": "MIT",
+    "main": "lib/index.js",
+    "name": "remark-wiki-link-a",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/twardoch/remark-wiki-link-a"
+    },
+    "scripts": {
+        "build": "babel src --out-dir lib",
+        "prepare": "npm run build",
+        "prepublish": "cross-env NODE_ENV=production npm run build",
+        "test": "npm run build && mocha --require @babel/register test/index_test.js",
+        "watch": "babel -w src --out-dir ."
+    },
+    "version": "0.0.5"
+}
+</file>
+
+<file path="README.md">
+# remark-wiki-link-a (Streamlined MVP)
+
+This [remark](https://github.com/wooorm/remark) plugin parses and renders `[[Wiki Links]]`. It is a streamlined version focusing on core functionality.
+
+*   Parses `[[Wiki Links]]` and `[[Page Name:Display Alias]]` formats.
+*   Renders them as HTML `<a>` tags.
+*   Allows customization of HTML output (classes, href structure).
+*   Checks for page existence against a provided list of permalinks.
+
+## Installation
+
+[npm][npm]:
+
+```bash
+npm install remark-wiki-link-a
+```
+
+## Usage
+
+```javascript
+const unified = require('unified');
+const markdown = require('remark-parse');
+const wikiLinkPlugin = require('remark-wiki-link-a');
+const html = require('rehype-stringify'); // For converting to HTML
+const remark2rehype = require('remark-rehype');
+
+// Example: Process markdown to HTML
+const processor = unified()
+    .use(markdown)
+    .use(wikiLinkPlugin, {
+        permalinks: ['existing-page'] // Normalized keys: 'existing-page' from "Existing Page"
+    })
+    .use(remark2rehype)
+    .use(html);
+
+const markdownInput = "Here is a link to [[An Existing Page]] and one to [[A New Page:With Alias]].";
+processor.process(markdownInput).then(result => {
+    console.log(String(result));
+    // Expected HTML (simplified):
+    // <p>Here is a link to <a class="wikilink" href="An-Existing-Page.html">An Existing Page</a> and one to <a class="wikilink new" href="A-New-Page.html">With Alias</a>.</p>
+});
+```
+
+## AST Node Structure
+
+When a wiki link like `[[My Page:My Alias]]` is parsed, a `wikiLink` node is created:
+
+```javascript
+{
+  type: 'wikiLink',
+  value: 'My Page', // Canonical page name
+  data: {
+    alias: 'My Alias', // Display text for the link
+    exists: false,     // Boolean, true if 'my-page' (normalized) is in options.permalinks
+    permalink: 'My-Page.html', // Generated href string, e.g., using default htmlPrefix, htmlSuffix, htmlSpace
+    hName: 'a',
+    hProperties: {
+      className: 'wikilink new', // e.g., 'wikilink' or 'wikilink new'
+      href: 'My-Page.html'       // The actual href for the <a> tag
+    },
+    hChildren: [{
+      type: 'text',
+      value: 'My Alias' // Display text
+    }]
+  }
+}
+```
+
+**Key Node Properties:**
+
+*   `node.value`: The canonical name of the page (e.g., "My Page" from `[[My Page:Anything]]`). Used for generating the HREF and for the permalink existence check key.
+*   `node.data.alias`: The text to be displayed for the link (e.g., "My Alias"). If no alias is specified, this defaults to `node.value`.
+*   `node.data.exists`: A boolean indicating if the page is considered to exist. This is determined by checking a normalized version of `node.value` (lowercase, spaces replaced by hyphens, e.g., "my-page") against the `options.permalinks` array.
+*   `node.data.permalink`: The generated permalink (HREF string) for the link. This is identical to `node.data.hProperties.href`.
+*   `node.data.hProperties.className`: The CSS class(es) for the generated `<a>` tag. By default, this is `wikilink`. If `node.data.exists` is `false`, ` new` (or `options.newClassName`) is appended.
+*   `node.data.hProperties.href`: The actual HREF for the `<a>` tag.
+*   `node.data.hChildren[0].value`: The display text, same as `node.data.alias`.
+
+## Configuration Options
+
+Options can be passed to `wikiLinkPlugin` as the second argument to `.use()`:
+
+*   `permalinks` (Array of strings, default: `[]`):
+    An array of known page permalink keys. The plugin normalizes the `value` of a wiki link (converts to lowercase, replaces spaces with hyphens) and checks if this key exists in the `permalinks` array to set `node.data.exists`.
+    Example: `permalinks: ['home-page', 'about-us']` would match `[[Home Page]]` and `[[About Us]]`.
+
+*   `htmlClass` (string, default: `'wikilink'`):
+    The base CSS class name to apply to the generated `<a>` HTML element.
+
+*   `newClassName` (string, default: `'new'`):
+    The CSS class name to append to `htmlClass` if the page link does not exist in `permalinks`.
+
+*   `htmlPrefix` (string, default: `''`):
+    A prefix to prepend to the generated `href` value. Example: `'/wiki/'`.
+
+*   `htmlSuffix` (string, default: `'.html'`):
+    A suffix to append to the generated `href` value. Example: `''` or `'.php'`.
+
+*   `htmlSpace` (string, default: `'-'`):
+    The character used to replace spaces in the page name when generating the `href` value. Example: `'_'`.
+
+## Stringification (Note)
+
+This MVP version of the plugin focuses on parsing wiki links and rendering them to HTML. The functionality to stringify `wikiLink` AST nodes back into `[[PageName]]` or `[[PageName:DisplayAlias]]` markdown text has been removed due to complexities with older versions of underlying libraries. If you process an AST containing these `wikiLink` nodes with a standard `remark-stringify`, they will not be converted back to the wiki link syntax unless you provide a custom stringifier for the `wikiLink` node type.
+</file>
+
+<file path="TODO.md">
+# TODO: Streamline remark-wiki-link-a for MVP
+
+## Phase 1: Preparation & Option Refinement
+
+- [ ] **Project Setup & Initial Cleanup:**
+    - [ ] Create `CHANGELOG.md`.
+    - [ ] In `package.json`: Remove `unist-util-map` from dependencies.
+    - [ ] In `package.json`: Review `babel-polyfill` dependency (potential removal).
+    - [ ] In `src/index.js`: Remove `require('unist-util-map')`.
+- [ ] **Refactor Options in `src/index.js`:**
+    - [ ] Define default options object for: `permalinks`, `htmlClass`, `htmlPrefix`, `htmlSuffix`, `htmlSpace`, `newClassName`.
+    - [ ] Remove handling and references to old options: `rewrite`, `mdPrefix`, `mdSuffix`, `mdSpace`, `hrefTemplate`, `pageResolver`, `wikiLinkClassName`.
+
+## Phase 2: Core Logic Implementation (`src/index.js`)
+
+- [ ] **Update `inlineTokenizer`:**
+    - [ ] **Alias Parsing:** Implement logic to parse `[[Value:Alias]]` and `[[Value]]`.
+        - Store canonical name in `node.value`.
+        - Store display name in `node.data.alias`.
+    - [ ] **Permalink Key & Existence Check:**
+        - Generate a normalized `permalinkKey` from `node.value` (e.g., lowercase, spaces to hyphens).
+        - Set `node.data.exists = settings.permalinks.includes(permalinkKey)`.
+    - [ ] **Node Structure:**
+        - Ensure `node.value` is the canonical page name.
+        - Ensure `node.data.alias` is the display text.
+        - Ensure `node.data.exists` is correctly set.
+    - [ ] **`hProperties.className`:**
+        - Set to `settings.htmlClass`.
+        - If `!node.data.exists`, append `settings.newClassName`.
+    - [ ] **`hProperties.href` & `data.permalink`:**
+        - Generate `href` using `settings.htmlPrefix + node.value.replace(/ /g, settings.htmlSpace) + settings.htmlSuffix`.
+        - Assign this generated `href` to both `node.data.permalink` and `node.data.hProperties.href`.
+    - [ ] **`hChildren`:**
+        - Set `hChildren` to `[{ type: 'text', value: node.data.alias }]`.
+- [ ] **Simplify `Compiler` (Stringifier):**
+    - [ ] Remove logic related to the old `rewrite` option.
+    - [ ] Stringify to `[[${node.value}]]` if alias is same as value or not present.
+    - [ ] Stringify to `[[${node.value}:${node.data.alias}]]` if alias exists and is different.
+
+## Phase 3: Testing & Documentation
+
+- [ ] **Update `test/index_test.js`:**
+    - [ ] Remove tests for all deprecated options.
+    - [ ] Add/Update tests for alias parsing (various cases).
+    - [ ] Add/Update tests for `node.data.exists` (with permalink normalization).
+    - [ ] Add/Update tests for `hProperties.className` (default and custom classes, new/existing states).
+    - [ ] Add/Update tests for `hProperties.href` and `data.permalink` generation.
+    - [ ] Add/Update tests for `hChildren` content (display alias).
+    - [ ] Add/Update stringify tests for `[[Value]]` and `[[Value:Alias]]` formats.
+- [ ] **Update `README.md`:**
+    - [ ] Remove documentation for all deprecated options.
+    - [ ] Document current options: `permalinks`, `htmlClass`, `newClassName`, `htmlPrefix`, `htmlSuffix`, `htmlSpace`.
+    - [ ] Explain alias syntax `[[Page Name:Display Alias]]`.
+    - [ ] Update AST node structure example.
+    - [ ] Update HTML output examples.
+    - [ ] Update basic usage example.
+
+## Phase 4: Finalization
+
+- [ ] **Run all tests:** `npm test` and ensure they pass.
+- [ ] **Manual Review:** Briefly review code changes and documentation.
+- [ ] **Update `CHANGELOG.md`:** Summarize all changes for this version/refactor.
+- [ ] **Submit:** Commit all changes.
+</file>
+
+</files>

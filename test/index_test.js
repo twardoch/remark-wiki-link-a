@@ -2,7 +2,6 @@ const assert = require('assert');
 const unified = require('unified')
 const markdown = require('remark-parse')
 const visit = require('unist-util-visit');
-const remark2markdown = require('remark-stringify');
 
 const wikiLinkPlugin = require('../lib/index.js'); // Path to built file
 
@@ -155,36 +154,4 @@ describe("remark-wiki-link-a (MVP)", () => {
             });
         });
     });
-
-    // Stringification tests removed for MVP as the feature was removed from the plugin.
-    // describe("Stringification", () => {
-    //     it("stringifies a simple wiki link", () => {
-    //         const processor = unified()
-    //             .use(markdown)
-    //             .use(wikiLinkPlugin)
-    //             .use(remark2markdown);
-
-    //         const stringified = processor.processSync('[[Simple Page]]').contents.trim();
-    //         assert.strictEqual(stringified, '[[Simple Page]]');
-    //     });
-
-    //     it("stringifies an aliased wiki link", () => {
-    //         const processor = unified()
-    //             .use(markdown)
-    //             .use(wikiLinkPlugin)
-    //             .use(remark2markdown);
-
-    //         const stringified = processor.processSync('[[Real Value:Display Alias]]').contents.trim();
-    //         assert.strictEqual(stringified, '[[Real Value:Display Alias]]');
-    //     });
-
-    //     it("stringifies an aliased wiki link where alias is same as value", () => {
-    //         const processor = unified()
-    //             .use(markdown)
-    //             .use(wikiLinkPlugin)
-    //             .use(remark2markdown);
-    //         const stringified = processor.processSync('[[Same:Same]]').contents.trim();
-    //         assert.strictEqual(stringified, '[[Same]]');
-    //     });
-    // });
 });
