@@ -2,7 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.0.0-mvp] - 2025-06-25
+## [Unreleased]
+
+### Recent Changes
+- Merged PR #3: Refactor to streamline plugin to MVP for remark-wiki-link-a
+- Merged PR #2: Feature implementation for MVP streamline
+- Updated project structure and dependencies for cleaner MVP implementation
+
+## [0.0.5] - 2025-06-29 (Current Version)
+
+### Changed
+- Completed MVP streamline refactor through merged pull requests
+- Stabilized core wiki link parsing functionality
+- Improved test coverage for edge cases
+
+## [0.0.4] - Previous Release
+
+### Changed
+- Published to npm
+- Various improvements and bug fixes
+
+## [1.0.0-mvp] - 2025-06-25 (Internal MVP Target)
 
 ### Added
 - Core functionality for parsing `[[Wiki Links]]`, `[[Page Name:Display Alias]]`, and `[[:Alias]]` (where alias becomes page name).
