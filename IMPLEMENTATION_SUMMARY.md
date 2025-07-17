@@ -70,30 +70,26 @@ npm run release:major   # Create major release
 npm run release:dry     # Dry run release
 ```
 
-### 4. GitHub Actions CI/CD
+### 4. GitHub Actions CI/CD Setup
 
 **Files Added:**
-- `.github/workflows/ci.yml` - Continuous integration
-- `.github/workflows/release.yml` - Automated releases
-- `.github/workflows/manual-release.yml` - Manual release triggers
+- `GITHUB_ACTIONS_SETUP.md` - Complete setup guide for GitHub Actions
 
 **Features:**
-- **CI Pipeline:**
-  - Multi-version Node.js testing (14.x, 16.x, 18.x, 20.x)
+- **Setup Guide for:**
+  - CI Pipeline with multi-version Node.js testing (14.x, 16.x, 18.x, 20.x)
   - Automatic testing on push/PR
   - Code coverage reporting
   - Version consistency validation
-
-- **Release Pipeline:**
   - Automatic release on git tag push
   - GitHub release creation
   - NPM package publishing
   - Binary artifact generation
-
-- **Manual Release:**
   - Manual workflow dispatch
   - Choice of release type
   - Dry-run capability
+
+**Note:** GitHub Actions workflows are provided as a setup guide due to permission restrictions. Users can easily copy the provided configurations to set up their own CI/CD pipeline.
 
 ### 5. Package Distribution & Installation
 
@@ -101,6 +97,7 @@ npm run release:dry     # Dry run release
 - `.nycrc.json` - Code coverage configuration
 - `DEVELOPMENT.md` - Development guide
 - `INSTALL.md` - Installation guide
+- `GITHUB_ACTIONS_SETUP.md` - CI/CD setup guide
 - Enhanced `package.json` with new scripts
 
 **Features:**
@@ -228,7 +225,7 @@ const wikiLinkPlugin = require('remark-wiki-link-a');
 - ✅ Version synchronized (1.0.0)
 - ✅ Build pipeline functional
 - ✅ Release scripts ready
-- ✅ GitHub Actions configured
+- ✅ GitHub Actions setup guide provided
 - ✅ Package distribution setup
 
 ## 🔄 Release Process
@@ -237,13 +234,13 @@ const wikiLinkPlugin = require('remark-wiki-link-a');
 
 1. Use release scripts: `npm run release:patch`
 2. Scripts handle version bumping, tagging, and preparation
-3. Push changes trigger GitHub Actions
+3. Push changes and tags to trigger GitHub Actions (once set up)
 4. Automatic NPM publication and GitHub release
 
 ### Manual
 
 1. Create and push git tag: `git tag v1.0.1 && git push origin v1.0.1`
-2. GitHub Actions automatically triggers release pipeline
+2. GitHub Actions automatically triggers release pipeline (once set up)
 3. NPM package published automatically
 4. GitHub release created with artifacts
 
@@ -252,6 +249,7 @@ const wikiLinkPlugin = require('remark-wiki-link-a');
 - `README.md` - User documentation
 - `DEVELOPMENT.md` - Development guide
 - `INSTALL.md` - Installation instructions
+- `GITHUB_ACTIONS_SETUP.md` - CI/CD setup guide
 - `CHANGELOG.md` - Version history
 - Code comments and JSDoc
 
