@@ -1,0 +1,78 @@
+name: Manual Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+        - patch
+        - minor
+        - major
+      dry_run:
+        description: 'Dry run (no actual release)'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  manual-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Configure Git
+      run: |
+        git config --global user.name "GitHub Action"
+        git config --global user.email "action@github.com"
+        
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18.x
+        cache: 'npm'
+        registry-url: https://registry.npmjs.org/
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run tests
+      run: npm test
+      
+    - name: Run full build
+      run: npm run build:full
+      
+    - name: Dry run release
+      if: ${{ github.event.inputs.dry_run == 'true' }}
+      run: npm run release:dry
+      
+    - name: Create release
+      if: ${{ github.event.inputs.dry_run != 'true' }}
+      run: npm run release:${{ github.event.inputs.release_type }}
+      
+    - name: Push changes
+      if: ${{ github.event.inputs.dry_run != 'true' }}
+      run: |
+        git push origin master
+        git push origin --tags
+        
+    - name: Get new version
+      if: ${{ github.event.inputs.dry_run != 'true' }}
+      id: version
+      run: echo "VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+      
+    - name: Publish to npm
+      if: ${{ github.event.inputs.dry_run != 'true' }}
+      run: npm publish
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
