@@ -30,6 +30,11 @@ function wikiLinkPlugin(options = {}) {
             const fullMatch = match[0]; // e.g., "[[Value:Alias]]"
             const content = match[1].trim(); // e.g., "Value:Alias"
 
+            // Skip empty or whitespace-only links
+            if (!content) {
+                return;
+            }
+
             let pageNameFromLink;
             let displayNameFromLink;
 
