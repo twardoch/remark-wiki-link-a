@@ -1,53 +1,74 @@
 {
-    "author": "Adam Twardoch <adam+github@twardoch.com> (https://twardoch.github.io)",
-    "bugs": {
-        "url": "https://github.com/twardoch/remark-wiki-link-a/issues"
-    },
-    "contributors": [
-        "Mark Hudnall <mark.hudnall@coinbase.com>"
-    ],
-    "dependencies": {
-        "core-js": "^3.43.0"
-    },
-    "description": "Parse and render wiki-style links",
-    "devDependencies": {
-        "@babel/cli": "^7.8.3",
-        "@babel/core": "^7.8.3",
-        "@babel/preset-env": "^7.8.3",
-        "@babel/register": "^7.27.1",
-        "cross-env": "^7.0.3",
-        "mocha": "^6.2.2",
-        "rehype-stringify": "^3.0.0",
-        "remark-parse": "^3.0.1",
-        "remark-rehype": "^2.0.1",
-        "remark-stringify": "^3.0.1",
-        "unified": "^6.1.5",
-        "unist-util-visit": "^1.4.1"
-    },
-    "directories": {
-        "lib": "lib",
-        "test": "test"
-    },
-    "homepage": "https://github.com/twardoch/remark-wiki-link-a#readme",
-    "keywords": [
-        "remark",
-        "remark-plugin",
-        "markdown",
-        "gfm"
-    ],
-    "license": "MIT",
-    "main": "lib/index.js",
-    "name": "remark-wiki-link-a",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/twardoch/remark-wiki-link-a"
-    },
-    "scripts": {
-        "build": "babel src --out-dir lib",
-        "prepare": "npm run build",
-        "prepublish": "cross-env NODE_ENV=production npm run build",
-        "test": "npm run build && mocha --require @babel/register test/index_test.js",
-        "watch": "babel -w src --out-dir ."
-    },
-    "version": "0.0.5"
+  "author": "Adam Twardoch <adam+github@twardoch.com> (https://twardoch.github.io)",
+  "bugs": {
+    "url": "https://github.com/twardoch/remark-wiki-link-a/issues"
+  },
+  "contributors": [
+    "Mark Hudnall <mark.hudnall@coinbase.com>"
+  ],
+  "dependencies": {
+    "core-js": "^3.43.0"
+  },
+  "description": "Parse and render wiki-style links",
+  "devDependencies": {
+    "@babel/cli": "^7.8.3",
+    "@babel/core": "^7.8.3",
+    "@babel/preset-env": "^7.8.3",
+    "@babel/register": "^7.27.1",
+    "cross-env": "^7.0.3",
+    "mocha": "^6.2.2",
+    "nyc": "^15.1.0",
+    "rehype-stringify": "^3.0.0",
+    "remark-parse": "^3.0.1",
+    "remark-rehype": "^2.0.1",
+    "remark-stringify": "^3.0.1",
+    "unified": "^6.1.5",
+    "unist-util-visit": "^1.4.1"
+  },
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "files": [
+    "lib/",
+    "src/",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "homepage": "https://github.com/twardoch/remark-wiki-link-a#readme",
+  "keywords": [
+    "remark",
+    "remark-plugin",
+    "markdown",
+    "gfm"
+  ],
+  "license": "MIT",
+  "main": "lib/index.js",
+  "name": "remark-wiki-link-a",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/twardoch/remark-wiki-link-a"
+  },
+  "scripts": {
+    "build": "babel src --out-dir lib",
+    "prepare": "npm run build",
+    "prepublish": "cross-env NODE_ENV=production npm run build",
+    "test": "npm run build && mocha --require @babel/register test/*.test.js test/index_test.js",
+    "test:watch": "npm run build && mocha --require @babel/register test/index_test.js --watch",
+    "test:coverage": "npm run build && nyc mocha --require @babel/register test/index_test.js",
+    "watch": "babel -w src --out-dir .",
+    "version:sync": "node scripts/version.js sync",
+    "version:check": "node scripts/version.js check",
+    "version:next": "node scripts/version.js next",
+    "build:full": "node scripts/build.js",
+    "release:patch": "node scripts/release.js patch",
+    "release:minor": "node scripts/release.js minor",
+    "release:major": "node scripts/release.js major",
+    "release:dry": "node scripts/release.js patch --dry-run",
+    "lint": "echo 'No linting configured yet'",
+    "preversion": "npm run build:full",
+    "postversion": "git push && git push --tags"
+  },
+  "version": "1.0.0"
 }
